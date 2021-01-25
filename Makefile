@@ -10,17 +10,13 @@ DOMAIN=yoorb.com
 AWS_REGION_ZONES=us-east-1d
 APP=kops
 
-kops-create-cluster kops-edit-cluster kops-update-cluster kops-delete-cluster:
-	export NAME=k8s.${DOMAIN}
+kops-create-cluster kops-edit-cluster kops-update-cluster kops-delete-cluster: export NAME=k8s.${DOMAIN}
 
-kops-create-cluster kops-edit-cluster kops-update-cluster kops-delete-cluster: 
-	export KOPS_STATE_STORE=s3://kops-state-store-${AWS_ACCOUNTID}-${AWS_REGION}
+kops-create-cluster kops-edit-cluster kops-update-cluster kops-delete-cluster: export KOPS_STATE_STORE=s3://kops-state-store-${AWS_ACCOUNTID}-${AWS_REGION}
 
-kops-create-cluster kops-edit-cluster kops-update-cluster kops-delete-cluster: 
-	key=$(aws --profile kops configure get aws_access_key_id); export AWS_ACCESS_KEY_ID=$key
+kops-create-cluster kops-edit-cluster kops-update-cluster kops-delete-cluster: key=$(aws --profile kops configure get aws_access_key_id); export AWS_ACCESS_KEY_ID=$key
 
-kops-create-cluster kops-edit-cluster kops-update-cluster kops-delete-cluster: 
-	secret=$(aws --profile kops configure get aws_secret_access_key); export AWS_SECRET_ACCESS_KEY=$secret
+kops-create-cluster kops-edit-cluster kops-update-cluster kops-delete-cluster: secret=$(aws --profile kops configure get aws_secret_access_key); export AWS_SECRET_ACCESS_KEY=$secret
 
 HELP_REGEX:=^(.+): .*\#\# (.*)
 
