@@ -1,0 +1,40 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack for deploying codebuild pipeline
+Resources:
+  KopsStateStore:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Metadata:
+      Description: Creating Amazon S3 bucket for KOPS state
+    Properties:
+      BucketName: !Sub kops-state-store-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+      - Key: Name
+        Value: !Join
+        - '-'
+        - - !Ref AWS::StackName
+          - kops-state-store
+
+Outputs:
+
+  KopsStateStoreArn:
+    Value: !GetAtt KopsStateStore.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-KopsStateStoreArn
+
+  KopsStateStoreName:
+    Value: !Ref KopsStateStore
+    Export:
+      Name: !Sub ${AWS::StackName}-KopsStateStoreName

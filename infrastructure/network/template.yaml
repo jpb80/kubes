@@ -1,0 +1,236 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Network stack
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: cfn-stack
+          Value: !Ref AWS::StackName
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: cfn-stack
+          Value: !Ref AWS::StackName
+
+  InternetGatewayVpcAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+
+  VpcRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: cfn-stack
+          Value: !Ref AWS::StackName
+      VpcId: !Ref Vpc
+
+  InternetGatewayRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref VpcRouteTable
+
+  NACL:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      Tags:
+        - Key: cfn-stack
+          Value: !Ref AWS::StackName
+      VpcId: !Ref Vpc
+
+  IngressHttpTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId: !Ref NACL
+      PortRange:
+        From: 80
+        To: 80
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 100
+
+  IngressHttpsTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId: !Ref NACL
+      PortRange:
+        From: 443
+        To: 443
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 110
+
+  IngressEphemeralTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId: !Ref NACL
+      PortRange:
+        From: 32768
+        To: 65535
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 120
+
+  IngressDenyTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId: !Ref NACL
+      Protocol: -1
+      RuleAction: deny
+      RuleNumber: 130
+
+  EgressHttpTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref NACL
+      PortRange:
+        From: 80
+        To: 80
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 100
+
+  EgressHttpsTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref NACL
+      PortRange:
+        From: 443
+        To: 443
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 110
+
+  EgressDatadogNtpTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref NACL
+      PortRange:
+        From: 123
+        To: 123
+      Protocol: 17
+      RuleAction: allow
+      RuleNumber: 120
+
+  EgressDatadogLogTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref NACL
+      PortRange:
+        From: 10516
+        To: 10516
+      Protocol: 17
+      RuleAction: allow
+      RuleNumber: 130
+
+  EgressEphemeralTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref NACL
+      PortRange:
+        From: 32768
+        To: 65535
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 140
+
+  EgressDenyTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref NACL
+      Protocol: -1
+      RuleAction: deny
+      RuleNumber: 150
+
+  Subnet1b:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: cfn-stack
+          Value: !Ref AWS::StackName
+      VpcId: !Ref Vpc
+
+  SubnetNaclAssociation1b:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !Ref NACL
+      SubnetId: !Ref Subnet1b
+
+  SubnetRouteTableAssociation1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VpcRouteTable
+      SubnetId: !Ref Subnet1b
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Default secruity group
+      GroupName: security-access
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: HTTP
+          IpProtocol: TCP
+          FromPort: 80
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          Description: HTTPs
+          IpProtocol: TCP
+          FromPort: 443
+          ToPort: 443
+      Tags:
+        - Key: cfn-StackName
+          Value: !Ref AWS::StackName
+      VpcId: !Ref Vpc
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub ${AWS::StackName}-VpcIp
+
+  SecurityGroupId:
+    Value: !GetAtt SecurityGroup.GroupId
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityGroupId
+
+  SubnetId:
+    Value: !Ref Subnet1b
+    Export:
+      Name: !Sub ${AWS::StackName}-SubnetId

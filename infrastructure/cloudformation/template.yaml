@@ -1,0 +1,79 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack for deploying codebuild pipeline
+Resources:
+  CloudFormationTrustRole:
+    Metadata:
+      Description: Creating service role in IAM for AWS CloudFormation
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: cfn-deploy-stacks
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+      Policies:
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Action:
+                - iam:CreateRole
+                - iam:AttachRolePolicy
+                - iam:PutRolePolicy
+                - iam:PassRole
+                - iam:DetachRolePolicy
+                - iam:ListRolePolicies
+                - iam:GetRole
+                - iam:DeleteRolePolicy
+                - iam:UpdateRoleDescription
+                - iam:ListRoles
+                - iam:DeleteRole
+                - iam:GetRolePolicy
+              Effect: Allow
+              Resource: arn:aws:iam::*:role/*
+            - Action:
+                - ssm:GetParameters
+                - ecr:*
+                - s3:*
+                - cloudformation:*
+                - sns:*
+                - ec2:*
+                - logs:*
+                - ssm:*
+                - secretsmanager:GetSecretValue
+              Effect: Allow
+              Resource: '*'
+        PolicyName: cloudformation-policies
+
+  CloudformationS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Metadata:
+      Description: Creating Amazon S3 bucket for AWS CodeBuild artifacts
+    Properties:
+      BucketName: !Sub cfn-template-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Status: Enabled
+            ExpirationInDays: 7
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Name
+          Value: !Join
+          - '-'
+          - - !Ref AWS::StackName
+            - ArtifactsBucket
