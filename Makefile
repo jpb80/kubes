@@ -81,30 +81,53 @@ deploy-stack-network:
 		--s3-bucket cfn-template-${AWS_ACCOUNTID}-${AWS_REGION} \
 		--role-arn arn:aws:iam::${AWS_ACCOUNTID}:role/cfn-deploy-stacks
 
-.PHONY: kops-create-cluster
-kops-create-cluster:
+.PHONY: kops-create-private-cluster
+kops-create-private-cluster:
 	kops create cluster \
 		${NAME} \
-		--zones ${AWS_REGION_ZONES} \
+		--zones "${AWS_REGION_ZONES}" \
 	   	--master-zones "${AWS_REGION_ZONES}" \
-	    	--networking weave \
+	    	--networking calico \
 	    	--topology private \
 	    	--node-count 1 \
-	    	--node-size t2.micro \
-	    	--kubernetes-version v1.20 \
-	    	--master-size t2.micro \
+	    	--node-size t2.small \
+	    	--master-size t2.small \
+		--state ${KOPS_STATE_STORE} \
 	    	--vpc vpc-2bd16c53 \
-	    	--dry-run \
-	    	-o yaml > $NAME.yaml
-		-v10
+		-v10 \
+	    	-o yaml > ${NAME}.yaml
+
+.PHONY: kops-create-public-cluster
+kops-create-public-cluster:
+	kops create cluster \
+		${NAME} \
+		--zones "${AWS_REGION_ZONES}" \
+	   	--master-zones "${AWS_REGION_ZONES}" \
+	    	--networking calico \
+	    	--topology public \
+	    	--node-count 1 \
+	    	--node-size t2.small \
+	    	--master-size t2.small \
+		--state ${KOPS_STATE_STORE} \
+	    	--vpc vpc-2bd16c53 \
+		-v10 \
+	    	-o yaml > ${NAME}.yaml
 
 .PHONY: kops-edit-cluster
 kops-edit-cluster:
-	kops edit cluster k8s.yoorb.com -v10
+	kops edit cluster ${NAME}
+
+.PHONY: kops-edit-nodes
+kops-edit-nodes:
+	kops edit ig ${NAME} --state=${KOPS_STATE_STORE} nodes
 
 .PHONY: kops-update-cluster
 kops-update-cluster:
-	kops update cluster ${NAME} --yes
+	kops update cluster ${NAME} --yes -v10
+
+.PHONY: kops-upgrad-cluster
+kops-upgrade-cluster:
+	kops upgrade cluster ${NAME} --yes -v10
 
 .PHONY: kops-delete-cluster
 kops-delete-cluster:
@@ -112,7 +135,7 @@ kops-delete-cluster:
 
 .PHONY: kops-create-secret
 kops-create-secret:
-	kops create secret --name k8s.yoorb.com sshpublickey admin -i ~/.ssh/id_rsa.pub
+	kops create secret --name ${NAME} sshpublickey admin -i ~/.ssh/id_rsa.pub
 
 .PHONY: deploy-all-stacks
 deploy-all-stacks: deploy-stack-cfn deploy-stack-storage deploy-stack-network
